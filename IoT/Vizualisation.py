@@ -41,6 +41,7 @@ ax.xaxis.set_minor_formatter(hourFmt)
 
 fig.autofmt_xdate()
 
+#test
 try:
     plt.show()
 except (KeyboardInterrupt):
