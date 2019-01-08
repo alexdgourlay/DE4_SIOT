@@ -17,9 +17,9 @@ def parseToPandasDF(csv_file):
 twitter_df = parseToPandasDF("Twitter_data.csv") 
 cmc_df = parseToPandasDF("CMC_data.csv") 
 
-# array = df[['bitcoin', 'bitcoincash']].values
+array = df[['bitcoin', 'bitcoincash']].values
 
-# grangercausalitytests(array, maxlag=30)
+grangercausalitytests(array, maxlag=30)
 
 fig, ax = plt.subplots()
 
