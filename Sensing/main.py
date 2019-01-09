@@ -56,7 +56,6 @@ def CountTweets(tweet):
         if word.startswith('#'):
             word = word[1:]
         if (word in list(twitter_df.columns.values)):
-            # print(word)
             count_dict[word] += 1
 
 class StreamListener(tweepy.StreamListener):

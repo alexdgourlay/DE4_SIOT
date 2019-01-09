@@ -1,12 +1,15 @@
-from RetrieveAzureData import retrieveAzureData
+from RetrieveAzureData import RetrieveAzureData
 import numpy as np
 import pandas as pd
+import scipy
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from statsmodels.graphics.tsaplots import plot_acf
 from statsmodels.tsa.stattools import grangercausalitytests
+from statsmodels.api import tsa
 
-retrieveAzureData()
+# RetrieveAzureData()
+
 
 def parseToPandasDF(csv_file):
     with open(csv_file) as file:
@@ -14,37 +17,168 @@ def parseToPandasDF(csv_file):
         pd.to_datetime(df.index)
         return df
 
-twitter_df = parseToPandasDF("Twitter_data.csv") 
-cmc_df = parseToPandasDF("CMC_data.csv") 
 
-array = df[['bitcoin', 'bitcoincash']].values
-
-grangercausalitytests(array, maxlag=30)
-
-fig, ax = plt.subplots()
-
-dayTicks = mdates.DayLocator(interval = 1)
-hourTicks = mdates.HourLocator(interval = 4)
-
-dayFmt = mdates.DateFormatter('%d/%m/%y')
-hourFmt = mdates.DateFormatter('%H:%M')
+twitter_df = parseToPandasDF("Twitter_data.csv")
+cmc_df = parseToPandasDF("CMC_data.csv")
 
 
-# ax.plot(df.index, df['ethereum'], linewidth = 2)
-
-diff = np.diff(df['bitcoin'])
-ax.plot(df.index[1:], diff, linewidth=1)
-ax.xaxis.set_major_locator(dayTicks)
-ax.xaxis.set_minor_locator(hourTicks)
-ax.xaxis.set_major_formatter(dayFmt)
-ax.xaxis.set_minor_formatter(hourFmt)
-
-fig.autofmt_xdate()
-
-#test
-try:
-    plt.show()
-except (KeyboardInterrupt):
-    plt.close()
+def FormatTimeAxis(xaxis, hourInterval=12):
+    dayTicks = mdates.DayLocator(interval=1)
+    hourTicks = mdates.HourLocator(interval=hourInterval)
+    dayFmt = mdates.DateFormatter('%d/%m/%y')
+    hourFmt = mdates.DateFormatter('%H:%M')
+    xaxis.set_major_locator(dayTicks)
+    xaxis.set_major_formatter(dayFmt)
+    xaxis.set_minor_locator(hourTicks)
+    xaxis.set_minor_formatter(hourFmt)
 
 
+def GenerateHistograms():
+    fig, ax = plt.subplots(nrows=1, ncols=6)
+    fig.set_size_inches(45, 6)
+    idx = 0
+
+    for coin in cmc_df.columns:
+        series = np.diff(twitter_df[coin].values)
+        series = np.diff(twitter_df[coin].values)
+        ax[idx].hist(series, bins=20)
+        ax[idx].set_title("{}".format(coin), fontsize=24)
+        idx += 1
+
+    plt.savefig('./Resources/tweet_histograms.png')
+
+
+def raw_plot(coin):
+    fig, ax = plt.subplots()
+    ax.set_title("{}".format(coin), fontsize=24)
+    fig.set_size_inches(10, 5)
+
+    ax.set_xlabel('Time')
+
+    ax.plot(twitter_df.index, twitter_df[coin], color='b', linewidth=2)
+    ax.set_ylabel('Number of Tweets', color='b')
+    ax.yaxis.label.set_fontsize(16)
+    ax.tick_params('y', labelsize=10)
+
+    ax2 = ax.twinx()
+    ax2.plot(cmc_df.index, cmc_df[coin], color='g', linewidth=2)
+    ax2.yaxis.label.set_fontsize(16)
+    ax2.set_ylabel('Price (USD)', color='g')
+    ax2.tick_params('y', labelsize=10)
+
+    FormatTimeAxis(ax.xaxis, hourInterval=9)
+
+    fig.autofmt_xdate()
+    fig.savefig('./Resources/{}_raw_plot.png'.format(coin))
+
+
+def norm_diff_plot(coin):
+
+    diff = np.diff(twitter_df[coin])
+    norm_tweets = (diff - np.mean(diff))/np.std(diff)
+
+    norm_prices = (cmc_df[coin] - np.mean(cmc_df[coin]))/np.std(cmc_df[coin])
+    fig, ax = plt.subplots()
+
+    ax.set_title("{}".format(coin), fontsize=24)
+    fig.set_size_inches(10, 5)
+
+    ax.set_xlabel('Time')
+
+    ax.plot(twitter_df.index[1:], norm_tweets, color='b', linewidth=0.2)
+    ax.yaxis.label.set_fontsize(16)
+    ax.tick_params('y', labelsize=10)
+    ax.plot(cmc_df.index[1:], norm_prices[1:], color='g', linewidth=1)
+
+    FormatTimeAxis(ax.xaxis, hourInterval=9)
+
+    fig.autofmt_xdate()
+    fig.savefig('./Resources/{}_norm_plot.png'.format(coin))
+
+def norm_diff_plot2(coin):
+
+    diff = np.diff(twitter_df[coin])
+    norm_tweets = (diff - np.mean(diff))/np.std(diff)
+
+    diff = np.diff(cmc_df[coin])
+    norm_prices = (diff - np.mean(diff))/np.std(diff)
+    fig, ax = plt.subplots()
+
+    ax.set_title("{}".format(coin), fontsize=24)
+    fig.set_size_inches(10, 5)
+
+    ax.set_xlabel('Time')
+
+    ax.plot(twitter_df.index[1:], norm_tweets, color='b', linewidth=0.2)
+    ax.yaxis.label.set_fontsize(16)
+    ax.tick_params('y', labelsize=10)
+    ax.plot(cmc_df.index[1:], norm_prices, color='g', linewidth=1)
+
+    FormatTimeAxis(ax.xaxis, hourInterval=9)
+
+    fig.autofmt_xdate()
+
+
+
+def seasonality(coin):
+    tweets = np.diff(twitter_df[coin])
+    # pd.DataFrame(data)
+    freq = round(1*1440/4.5)
+    decomposed = tsa.seasonal_decompose(tweets, freq=freq)
+    decomposed.plot()
+
+    plt.savefig('./Resources/{}_seasonal_plot.png'.format(coin))
+
+def pearsonR(coin):
+    print(coin)
+    return (scipy.stats.pearsonr(np.diff(twitter_df[coin]), cmc_df[coin][1:]))
+
+def pearsonR2(coin):
+    print(coin)
+    return (scipy.stats.pearsonr(np.diff(twitter_df[coin]), np.diff(cmc_df[coin])))
+
+
+
+def Causality():
+    rows = 5
+    fig, ax = plt.subplots(nrows=rows, ncols=2)
+    ax = [item for sublist in ax for item in sublist]
+
+    lag = 80
+    idx = 0
+
+    for coin in cmc_df.columns[1:rows+1]:
+
+        ax[idx].plot(twitter_df.index[1:], np.diff(twitter_df[coin]))
+        ax[idx].twinx().plot(cmc_df.index, cmc_df[coin], color='green')
+
+        FormatTimeAxis(ax[idx].xaxis, 12)
+        idx += 1
+
+        array = [cmc_df[coin].values[1:], np.diff(twitter_df[coin].values)]
+        array = np.asarray(array).transpose()
+
+        gc_test = grangercausalitytests(array, maxlag=lag, verbose=False)
+        pvals = [gc_test.get(i+1)[0].get('ssr_ftest')[1]
+                 for i in range(0, lag)]
+
+        ax[idx].plot(pvals)
+
+        idx += 1
+
+    fig.autofmt_xdate()
+
+def auto():
+    coin = 'bitcoin'
+    fig = plt.figure()
+    fig.add_subplot(121)
+    plot_acf(np.diff(twitter_df[coin].values), lags=10)
+    fig.add_subplot(122)
+    plot_acf(np.diff(twitter_df[coin].values), lags=10)
+
+
+print(pearsonR('ethereum'))
+
+print(pearsonR2('ethereum'))
+
+plt.show()

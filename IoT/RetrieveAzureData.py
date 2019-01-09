@@ -3,7 +3,7 @@ from azure.storage.blob import BlockBlobService
 from azure.storage.blob import ContentSettings
 
 
-def retrieveAzureData():
+def RetrieveAzureData():
     with open('../Sensing/credentials.json') as f:
         creds = json.load(f)
 
