@@ -10,7 +10,6 @@ from statsmodels.api import tsa
 
 # RetrieveAzureData()
 
-
 def parseToPandasDF(csv_file):
     with open(csv_file) as file:
         df = pd.read_csv(file, index_col=0, parse_dates=True)
@@ -95,31 +94,6 @@ def norm_diff_plot(coin):
     fig.autofmt_xdate()
     fig.savefig('./Resources/{}_norm_plot.png'.format(coin))
 
-def norm_diff_plot2(coin):
-
-    diff = np.diff(twitter_df[coin])
-    norm_tweets = (diff - np.mean(diff))/np.std(diff)
-
-    diff = np.diff(cmc_df[coin])
-    norm_prices = (diff - np.mean(diff))/np.std(diff)
-    fig, ax = plt.subplots()
-
-    ax.set_title("{}".format(coin), fontsize=24)
-    fig.set_size_inches(10, 5)
-
-    ax.set_xlabel('Time')
-
-    ax.plot(twitter_df.index[1:], norm_tweets, color='b', linewidth=0.2)
-    ax.yaxis.label.set_fontsize(16)
-    ax.tick_params('y', labelsize=10)
-    ax.plot(cmc_df.index[1:], norm_prices, color='g', linewidth=1)
-
-    FormatTimeAxis(ax.xaxis, hourInterval=9)
-
-    fig.autofmt_xdate()
-
-
-
 def seasonality(coin):
     tweets = np.diff(twitter_df[coin])
     # pd.DataFrame(data)
@@ -133,40 +107,28 @@ def pearsonR(coin):
     print(coin)
     return (scipy.stats.pearsonr(np.diff(twitter_df[coin]), cmc_df[coin][1:]))
 
-def pearsonR2(coin):
-    print(coin)
-    return (scipy.stats.pearsonr(np.diff(twitter_df[coin]), np.diff(cmc_df[coin])))
+
+def crossPlot(coin):
+    fig, ax = plt.subplots()
+
+    fig.set_size_inches(10, 10)
+
+    ax.set_xlabel("{} price".format(coin))
+    ax.set_ylabel("Number of {} tweets".format(coin))
+
+    ax.scatter(cmc_df[coin][1:],np.diff(twitter_df[coin]), color='b', linewidth=2)
+
+def crossPlot_diff(coin):
+    fig, ax = plt.subplots()
+
+    fig.set_size_inches(10, 10)
+
+    ax.set_xlabel("{} price".format(coin))
+    ax.set_ylabel("Number of {} tweets".format(coin))
+
+    ax.scatter(np.diff(cmc_df[coin]),np.diff(twitter_df[coin]), color='b', linewidth=2)
 
 
-
-def Causality():
-    rows = 5
-    fig, ax = plt.subplots(nrows=rows, ncols=2)
-    ax = [item for sublist in ax for item in sublist]
-
-    lag = 80
-    idx = 0
-
-    for coin in cmc_df.columns[1:rows+1]:
-
-        ax[idx].plot(twitter_df.index[1:], np.diff(twitter_df[coin]))
-        ax[idx].twinx().plot(cmc_df.index, cmc_df[coin], color='green')
-
-        FormatTimeAxis(ax[idx].xaxis, 12)
-        idx += 1
-
-        array = [cmc_df[coin].values[1:], np.diff(twitter_df[coin].values)]
-        array = np.asarray(array).transpose()
-
-        gc_test = grangercausalitytests(array, maxlag=lag, verbose=False)
-        pvals = [gc_test.get(i+1)[0].get('ssr_ftest')[1]
-                 for i in range(0, lag)]
-
-        ax[idx].plot(pvals)
-
-        idx += 1
-
-    fig.autofmt_xdate()
 
 def auto():
     coin = 'bitcoin'
@@ -176,9 +138,8 @@ def auto():
     fig.add_subplot(122)
     plot_acf(np.diff(twitter_df[coin].values), lags=10)
 
-
-print(pearsonR('ethereum'))
-
-print(pearsonR2('ethereum'))
+# crossPlot_diff('xrp')
+# Causality('bitcoin', 100)
+# Causality2('bitcoin', 100)
 
 plt.show()

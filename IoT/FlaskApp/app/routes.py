@@ -1,4 +1,4 @@
-from flask import render_template
+from flask import render_template, request
 from app import app
 
 import pandas as pd
@@ -8,7 +8,6 @@ import json
 from bokeh.plotting import figure
 from bokeh.models import ColumnDataSource
 from bokeh.embed import components
-
 
 def RetrieveAzureData():
     with open('./credentials.json') as f:
@@ -35,17 +34,25 @@ def create_figure(df, coin):
     source = ColumnDataSource(df)
     p = figure(x_axis_type="datetime", plot_width=800, plot_height=400)
     p.line('Date', coin, source=source)
+
+    p.xaxis.axis_label = 'Time'
+    p.yaxis.axis_label = 'Price (USD)'
+
     return p
 
-@app.route('/<string:page_name>/')
-def index(page_name):
+@app.route('/')
+def index():
     RetrieveAzureData()
-
-    coin = page_name.lower()
 
     twitter_df = parseToPandasDF("Twitter_data.csv")
     cmc_df = parseToPandasDF("CMC_data.csv")
 
-    script, div = components(create_figure(cmc_df, coin))
+    coin_names = cmc_df.columns
 
-    return render_template('bokeh.html', coin=coin,script=script, div=div)
+    current_coin = request.args.get("current_coin")
+    if current_coin == None:
+        current_coin = 'bitcoin'
+
+    script, div = components(create_figure(cmc_df, current_coin))
+
+    return render_template('bokeh.html',script=script, div=div, coin_names=coin_names, current_coin=current_coin)
