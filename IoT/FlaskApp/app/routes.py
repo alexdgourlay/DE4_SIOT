@@ -2,11 +2,12 @@ from flask import render_template, request
 from app import app
 
 import pandas as pd
+import numpy as np
 from azure.storage.blob import BlockBlobService, ContentSettings
 import json
 
 from bokeh.plotting import figure
-from bokeh.models import ColumnDataSource
+from bokeh.models import ColumnDataSource, LinearAxis, Range1d
 from bokeh.embed import components
 
 def RetrieveAzureData():
@@ -30,13 +31,25 @@ def parseToPandasDF(csv_file):
         df.index.name = 'Date'
         return df
 
-def create_figure(df, coin):
-    source = ColumnDataSource(df)
+def create_figure(coin, df1, df2):
+    price = ColumnDataSource(df1)
+
+    diff = np.diff(df2[coin])
+    tweet_df = pd.DataFrame({coin:diff}, index=df1.index.values[1:])
+    tweet_df.index.name = 'Date'
+    tweets = ColumnDataSource(tweet_df)
+
     p = figure(x_axis_type="datetime", plot_width=800, plot_height=400)
-    p.line('Date', coin, source=source)
+    
+    p.extra_y_ranges = {'Tweets' : Range1d(start=min(diff), end=2*max(diff))}
+    p.add_layout(LinearAxis(y_range_name='Tweets', axis_label='Volume of Tweets'), 'right')
+
+
+    p.line('Date', coin, source=price, line_color="#f46d43")
+    p.line('Date', coin, source=tweets, y_range_name='Tweets' )
 
     p.xaxis.axis_label = 'Time'
-    p.yaxis.axis_label = 'Price (USD)'
+
 
     return p
 
@@ -53,6 +66,6 @@ def index():
     if current_coin == None:
         current_coin = 'bitcoin'
 
-    script, div = components(create_figure(cmc_df, current_coin))
+    script, div = components(create_figure(current_coin, cmc_df, twitter_df))
 
     return render_template('bokeh.html',script=script, div=div, coin_names=coin_names, current_coin=current_coin)

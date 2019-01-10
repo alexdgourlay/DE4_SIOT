@@ -51,5 +51,3 @@ def Causality(coin, lag):
 
     return minPoint
 
-for coin in cmc_df.columns:
-    print('{}: {}'.format(coin, Causality(coin, 100)))
